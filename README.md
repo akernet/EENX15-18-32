@@ -9,10 +9,12 @@ source tree and can be compiled from any path as long as UHD is
 currently installed on the current machine.
 
 To try it out, run these commands:
+```bash
 $ mkdir build/ # Creates a new build directory
 $ cd build/
 $ cmake ..
 $ make
+```
 
 This will find the UHD libraries, and link and compile the example
 program. Include header directories and library names are automatically
