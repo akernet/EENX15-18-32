@@ -61,6 +61,23 @@ std::string generate_out_filename(const std::string &base_fn, size_t n_names, si
     return base_fn_fp.string();
 }
 
+std::vector<std::complex<float>> pn_table;
+    
+void init_pn(){
+    const int N = 6;
+    std::ifstream infile;
+    infile.open("../../signalgenerering/output/mls.bin", std::ios::in | std::ios::binary);
+    double *U = (double*) malloc(N * sizeof(double));
+    infile.read((char*) U, N*sizeof(double)); 
+    infile.close();
+    for (int i = 0; i < N; i++) {
+        printf("%i %fn", i, U[i]);
+    }
+}
+
+std::complex<float> get_pn(int index){
+    return pn_table[index];
+}
 
 /***********************************************************************
  * transmit_worker function
@@ -199,6 +216,8 @@ template<typename samp_type> void recv_to_file(
  **********************************************************************/
 int UHD_SAFE_MAIN(int argc, char *argv[]){
     uhd::set_thread_priority_safe();
+
+    init_pn();
 
     //transmit variables to be set by po
     std::string tx_args, wave_type, tx_ant, tx_subdev, ref, otw, tx_channels;

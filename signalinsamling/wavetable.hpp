@@ -20,6 +20,7 @@
 #include <complex>
 #include <vector>
 #include <stdexcept>
+#include <fstream>
 
 static const size_t wave_table_len = 8192;
 
@@ -46,13 +47,30 @@ public:
             static const double tau = 2*std::acos(-1.0);
             for (size_t i = 0; i < wave_table_len; i++)
                 real_wave_table[i] = std::sin((tau*i)/wave_table_len);
+        } else if (wave_type == "PN") {
+            const int N = wave_table_len;
+
+            double *U = (double*)malloc(N * sizeof(double));
+
+            std::ifstream infile;
+            infile.open("../../signalgenerering/out/mls.bin", std::ios::in | std::ios::binary);
+            infile.read((char*)U, N*sizeof(double));
+            infile.close();
+
+            for (int i=0; i<N; i++) {
+                real_wave_table[i] = U[i];
+            }
         }
         else throw std::runtime_error("unknown waveform type: " + wave_type);
 
         //compute i and q pairs with 90% offset and scale to amplitude
         for (size_t i = 0; i < wave_table_len; i++){
             const size_t q = (i+(3*wave_table_len)/4)%wave_table_len;
-            _wave_table[i] = std::complex<float>(ampl*real_wave_table[i], ampl*real_wave_table[q]);
+            if (wave_type == "PN") {
+                _wave_table[i] = std::complex<float>(ampl*real_wave_table[i], 0.0f);
+            } else {
+                _wave_table[i] = std::complex<float>(ampl*real_wave_table[i], ampl*real_wave_table[q]);
+            }
         }
     }
 
