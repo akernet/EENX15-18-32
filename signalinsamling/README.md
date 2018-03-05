@@ -19,4 +19,7 @@ gathered.
 
 See the CMakeLists.txt file to figure out how to set up a build system.
 
+```bash
+./main --tx-rate 64e3 --rx-rate 64e3 --tx-freq 100e6 --rx-freq 100e6 --wave-type COMB --wave-freq 2000 --tx-gain 60 --rx-gain 20 --type double --tx-bw 50e5 --rx-bw 50e5
+```
 
