@@ -21,8 +21,9 @@
 #include <vector>
 #include <stdexcept>
 #include <fstream>
+#include <iostream>
 
-static const size_t wave_table_len = 8192;
+static const size_t wave_table_len = 32768;
 
 class wave_table_class{
 public:
@@ -30,7 +31,7 @@ public:
         _wave_table(wave_table_len)
     {
         //compute real wave table with 1.0 amplitude
-        std::vector<double> real_wave_table(wave_table_len);
+        std::vector<double> real_wave_table(wave_table_len*2);
         if (wave_type == "CONST"){
             for (size_t i = 0; i < wave_table_len; i++)
                 real_wave_table[i] = 1.0;
@@ -48,18 +49,35 @@ public:
             for (size_t i = 0; i < wave_table_len; i++)
                 real_wave_table[i] = std::sin((tau*i)/wave_table_len);
         } else if (wave_type == "PN") {
+            /*
+            const int N = wave_table_len;
+
+            double test = 0;
+
+            std::ifstream infile;
+            infile.open("../../signalgenerering/out/mls.bin", std::ios::in | std::ios::binary);
+
+            for (int i=0; i<N; i++) {
+                infile.read((double)test, sizeof(double));
+                real_wave_table[i] = test;
+            }
+            infile.close();
+            */
+        } else if (wave_type == "COMB") {
+
             const int N = wave_table_len;
 
             double *U = (double*)malloc(N * sizeof(double));
 
             std::ifstream infile;
-            infile.open("../../signalgenerering/out/mls.bin", std::ios::in | std::ios::binary);
+            infile.open("../../signalgenerering/output/comb.bin", std::ios::in | std::ios::binary);
             infile.read((char*)U, N*sizeof(double));
             infile.close();
 
             for (int i=0; i<N; i++) {
                 real_wave_table[i] = U[i];
             }
+
         }
         else throw std::runtime_error("unknown waveform type: " + wave_type);
 
@@ -68,6 +86,8 @@ public:
             const size_t q = (i+(3*wave_table_len)/4)%wave_table_len;
             if (wave_type == "PN") {
                 _wave_table[i] = std::complex<float>(ampl*real_wave_table[i], 0.0f);
+            } else if (wave_type == "COMB") {
+                _wave_table[i] = std::complex<float>(ampl*real_wave_table[2*i], ampl*real_wave_table[2*i+1]);
             } else {
                 _wave_table[i] = std::complex<float>(ampl*real_wave_table[i], ampl*real_wave_table[q]);
             }

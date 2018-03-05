@@ -410,13 +410,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     if (std::abs(wave_freq) > tx_usrp->get_tx_rate()/2){
         throw std::runtime_error("wave freq out of Nyquist zone");
     }
-    if (tx_usrp->get_tx_rate()/std::abs(wave_freq) > wave_table_len/2){
+    /*if (tx_usrp->get_tx_rate()/std::abs(wave_freq) > wave_table_len/2){
         throw std::runtime_error("wave freq too small for table");
-    }
+    }*/
 
     //pre-compute the waveform values
     const wave_table_class wave_table(wave_type, ampl);
-    const size_t step = boost::math::iround(wave_freq/tx_usrp->get_tx_rate() * wave_table_len);
+    //const size_t step = boost::math::iround(wave_freq/tx_usrp->get_tx_rate() * wave_table_len);
+    const size_t step = 1;
     size_t index = 0;
 
     //create a transmit streamer
