@@ -61,7 +61,7 @@ std::string generate_out_filename(const std::string &base_fn, size_t n_names, si
     return base_fn_fp.string();
 }
 
-std::vector<std::complex<float>> pn_table;
+std::vector<std::complex<float> > pn_table;
     
 void init_pn(){
     const int N = 6;
