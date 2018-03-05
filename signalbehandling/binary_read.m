@@ -18,25 +18,24 @@ reference_q_signal = 0;
 reference_complex_signal = reference_i_signal+1i*reference_q_signal;
 
 number_of_fft_samples = 10;
-fft_size = 2^13;
-offset = 2000;
+fft_size = 2^10;
+offset = 1;
 sample_offsets = transpose(offset + fft_size*(0:number_of_fft_samples-1));
 sample_points = repmat((1:fft_size), number_of_fft_samples, 1) + sample_offsets;
 
 fft_samples = in_complex_signal(sample_points);
 
 % fftshift to convert to gnuradio presentation.
-in_Y = fftshift(fft(fft_samples));
+in_Y = fftshift(fft(fft_samples, [], 2));
 
 frequencies = linspace(-samp_rate/2, samp_rate/2, length(in_Y));
 subplot(3, 1, 1);
 plot(frequencies, abs(in_Y));
 
-
 % offset fft window start
 fft_samples = reference_complex_signal(sample_points);
 % fftshift to convert to gnuradio presentation.
-reference_Y = fftshift(fft(fft_samples));
+reference_Y = fftshift(fft(fft_samples, [], 2));
 
 frequencies = linspace(-samp_rate/2, samp_rate/2, length(reference_Y));
 subplot(3, 1, 2);
@@ -51,5 +50,5 @@ average_X = mean(X, 1);
 average_Y = mean(Y, 1);
 average_phase = angle(average_X + 1i*average_Y);
 
-plot(frequencies, average_phase);
+plot(frequencies, unwrap(average_phase));
 
