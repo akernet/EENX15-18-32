@@ -440,7 +440,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     uhd::time_spec_t timespec = uhd::time_spec_t(2.1);
     md.time_spec = timespec; //give us 0.1 seconds to fill the tx buffers
 
-    uhd::time_spec_t rx_timespec = timespec + uhd::time_spec_t(0.001);
+    uhd::time_spec_t rx_timespec = timespec - uhd::time_spec_t(0.001);
 
     //Check Ref and LO Lock detect
     std::vector<std::string> tx_sensor_names, rx_sensor_names;
