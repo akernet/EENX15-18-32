@@ -49,6 +49,21 @@ public:
             for (size_t i = 0; i < wave_table_len; i++)
                 real_wave_table[i] = std::sin((tau*i)/wave_table_len);
         } else if (wave_type == "PN") {
+
+
+            const int N = wave_table_len;
+
+            double *U = (double*)malloc(N * sizeof(double));
+
+            std::ifstream infile;
+            infile.open("../../signalgenerering/output/pn.bin", std::ios::in | std::ios::binary);
+            infile.read((char*)U, N*sizeof(double));
+            infile.close();
+
+            for (int i=0; i<N; i++) {
+                real_wave_table[i] = U[i];
+            }
+
             /*
             const int N = wave_table_len;
 

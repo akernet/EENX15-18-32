@@ -124,12 +124,12 @@ template<typename samp_type> void recv_to_file(
     const std::string &file,
     size_t samps_per_buff,
     int num_requested_samples,
-    float settling_time,
+    uhd::time_spec_t timespec,
     std::vector<size_t> rx_channel_nums
 ){
     int num_total_samps = 0;
     //create a receive streamer
-    uhd::stream_args_t stream_args(cpu_format,wire_format);
+    uhd::stream_args_t stream_args(cpu_format, wire_format);
     stream_args.channels = rx_channel_nums;
     uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 
@@ -154,7 +154,7 @@ template<typename samp_type> void recv_to_file(
     UHD_ASSERT_THROW(outfiles.size() == buffs.size());
     UHD_ASSERT_THROW(buffs.size() == rx_channel_nums.size());
     bool overflow_message = true;
-    float timeout = settling_time + 0.1f; //expected settling time + padding for first recv
+    float timeout = 2.1f + 0.1f; //expected settling time + padding for first recv
 
     //setup streaming
     uhd::stream_cmd_t stream_cmd((num_requested_samples == 0)?
@@ -163,7 +163,8 @@ template<typename samp_type> void recv_to_file(
     );
     stream_cmd.num_samps = num_requested_samples;
     stream_cmd.stream_now = false;
-    stream_cmd.time_spec = uhd::time_spec_t(settling_time);
+    stream_cmd.time_spec = timespec;
+
     rx_stream->issue_stream_cmd(stream_cmd);
 
     while(not stop_signal_called and (num_requested_samples > num_total_samps or num_requested_samples == 0)){
@@ -436,7 +437,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     md.start_of_burst = true;
     md.end_of_burst   = false;
     md.has_time_spec  = true;
-    md.time_spec = uhd::time_spec_t(0.1); //give us 0.1 seconds to fill the tx buffers
+    uhd::time_spec_t timespec = uhd::time_spec_t(2.1);
+    md.time_spec = timespec; //give us 0.1 seconds to fill the tx buffers
+
+    uhd:time_spec_t rx_timespec = timespec + uhd::time_spec_t(0.001);
 
     //Check Ref and LO Lock detect
     std::vector<std::string> tx_sensor_names, rx_sensor_names;
@@ -478,7 +482,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     }
 
     if (total_num_samps == 0){
-        std::signal(SIGINT, &sig_int_handler);
         std::cout << "Press Ctrl + C to stop streaming..." << std::endl;
     }
 
@@ -491,9 +494,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     transmit_thread.create_thread(boost::bind(&transmit_worker, buff, wave_table, tx_stream, md, step, index, num_channels));
 
     //recv to file
-    if (type == "double") recv_to_file<std::complex<double> >(rx_usrp, "fc64", otw, file, spb, total_num_samps, settling, rx_channel_nums);
-    else if (type == "float") recv_to_file<std::complex<float> >(rx_usrp, "fc32", otw, file, spb, total_num_samps, settling, rx_channel_nums);
-    else if (type == "short") recv_to_file<std::complex<short> >(rx_usrp, "sc16", otw, file, spb, total_num_samps, settling, rx_channel_nums);
+    if (type == "double") recv_to_file<std::complex<double> >(rx_usrp, "fc64", otw, file, spb, total_num_samps, rx_timespec, rx_channel_nums);
+    else if (type == "float") recv_to_file<std::complex<float> >(rx_usrp, "fc32", otw, file, spb, total_num_samps, rx_timespec, rx_channel_nums);
+    else if (type == "short") recv_to_file<std::complex<short> >(rx_usrp, "sc16", otw, file, spb, total_num_samps, rx_timespec, rx_channel_nums);
     else {
         //clean up transmit worker
         stop_signal_called = true;
