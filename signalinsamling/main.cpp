@@ -45,73 +45,79 @@ void send_from_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
     const std::string &file
 ){
+    int spb = 5000;
 
-    uhd::stream_args_t stream_args("fc64", "fc64");
+    uhd::stream_args_t stream_args("fc32", "sc16");
+
+    std::vector<size_t> channel_nums;
+    channel_nums.push_back(0);
+
+    stream_args.channels = channel_nums;
     uhd::tx_streamer::sptr tx_stream = usrp_device->get_tx_stream(stream_args);
 
     uhd::tx_metadata_t md;
-    md.start_of_burst = false;
+    md.start_of_burst = true;
     md.end_of_burst = false;
-    std::vector<float> buff(tx_stream->get_max_num_samps());
+    md.has_time_spec = true;
+    uhd::time_spec_t tspec(1.0);
+    md.time_spec = tspec;
+    std::vector<std::complex<float>> buff(spb);
     std::ifstream infile(file.c_str(), std::ifstream::binary);
 
     //loop until the entire file has been read
 
-    while(not md.end_of_burst and not stop_signal_called){
+    while(not md.end_of_burst){
 
-        infile.read((char*)&buff.front(), buff.size()*sizeof(double));
-        size_t num_tx_samps = size_t(infile.gcount()/sizeof(double));
-
+        infile.read((char*)&buff.front(), buff.size()*sizeof(std::complex<float>));
+        size_t num_tx_samps = size_t(infile.gcount()/sizeof(std::complex<float>));
+        //std::cout << "num_tx_samps" << num_tx_samps << " eof " << infile.eof() << std::endl;
         md.end_of_burst = infile.eof();
 
-        tx_stream->send(&buff.front(), num_tx_samps, md);
+        tx_stream->send(&buff.front(), num_tx_samps, md, 0.1);
+        md.has_time_spec = false;
+        md.start_of_burst = false;
     }
-
     infile.close();
+    std::cout << "Closing in file!" << std::flush;
+
+    stop_signal_called = true;
 }
 
 void recv_to_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
     const std::string &file
 ){
-    int num_total_samps = 0;
+    unsigned long long num_total_samps = 0;
+    int spb = 10000;
     //create a receive streamer
-    uhd::stream_args_t stream_args("fc64", "fc64");
+    uhd::stream_args_t stream_args("fc32", "sc16");
+
+    std::vector<size_t> channel_nums;
+    channel_nums.push_back(boost::lexical_cast<size_t>(0));
+    stream_args.channels = channel_nums;
     uhd::rx_streamer::sptr rx_stream = usrp_device->get_rx_stream(stream_args);
 
     // Prepare buffers for received samples and metadata
     uhd::rx_metadata_t md;
-    std::vector <std::vector<double> > buffs(
-        1, std::vector<double>(rx_stream->get_max_num_samps())
-    );
-    //create a vector of pointers to point to each of the channel buffers
-    std::vector<double *> buff_ptrs;
-    for (size_t i = 0; i < buffs.size(); i++) {
-        buff_ptrs.push_back(&buffs[i].front());
-    }
+    std::vector<std::complex<float>> buff(spb);
+    std::ofstream outfile;
+    outfile.open(file.c_str(), std::ofstream::binary);
 
-    // Create one ofstream object per channel
-    // (use shared_ptr because ofstream is non-copyable)
-    std::vector<boost::shared_ptr<std::ofstream> > outfiles;
-    for (size_t i = 0; i < buffs.size(); i++) {
-        const std::string this_filename = file;
-        outfiles.push_back(boost::shared_ptr<std::ofstream>(new std::ofstream(this_filename.c_str(), std::ofstream::binary)));
-    }
-    UHD_ASSERT_THROW(outfiles.size() == buffs.size());
-    UHD_ASSERT_THROW(buffs.size() == 1);
     bool overflow_message = true;
-    float timeout = 2.1f + 0.1f; //expected settling time + padding for first recv
+    float timeout = 20.1f + 0.1f; //expected settling time + padding for first recv
 
     //setup streaming
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
     stream_cmd.num_samps = 0;
     stream_cmd.stream_now = false;
-    stream_cmd.time_spec = uhd::time_spec_t(1.1);
+    stream_cmd.time_spec = uhd::time_spec_t(0.1);
 
     rx_stream->issue_stream_cmd(stream_cmd);
-
     while(not stop_signal_called){
-        size_t num_rx_samps = rx_stream->recv(buff_ptrs, rx_stream->get_max_num_samps(), md, timeout);
+        //std::cout << "in loop";
+        // blocking
+        size_t num_rx_samps = rx_stream->recv(&buff.front(), buff.size(), md, timeout);
+        //std::cout << "Got metadata: " << md.to_pp_string();
         timeout = 0.1f; //small timeout for subsequent recv
 
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
@@ -127,7 +133,7 @@ void recv_to_file(
                     "  Dropped samples will not be written to the file.\n"
                     "  Please modify this example for your purposes.\n"
                     "  This message will not appear again.\n"
-                ) % (usrp_device->get_rx_rate()*sizeof(double)/1e6);
+                ) % (usrp_device->get_rx_rate()*sizeof(std::complex<float>)/1e6);
             }
             continue;
         }
@@ -139,19 +145,21 @@ void recv_to_file(
 
         num_total_samps += num_rx_samps;
 
-        for (size_t i = 0; i < outfiles.size(); i++) {
-            outfiles[i]->write((const char*) buff_ptrs[i], num_rx_samps*sizeof(double));
+        if (outfile.is_open()) {
+            outfile.write((const char*) &buff.front(), num_rx_samps*sizeof(std::complex<float>));
+        } else {
+            std::cout << "outfile not open!";
         }
-    }
 
+    }
     // Shut down receiver
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    // Close files
-    for (size_t i = 0; i < outfiles.size(); i++) {
-        outfiles[i]->close();
-    }
+    std::cout << std::flush;
+
+    // Close file
+    outfile.close();
 }
 
 
