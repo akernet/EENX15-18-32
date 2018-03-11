@@ -28,9 +28,13 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
+#include <algorithm>    // std::fill
+#include <vector>       // std::vector
 #include <boost/filesystem.hpp>
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <chrono>
 #include <csignal>
 
 namespace po = boost::program_options;
@@ -45,7 +49,19 @@ void send_from_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
     const std::string &file
 ){
+
     int spb = 5000;
+    uhd::tx_metadata_t zeropadding_md;
+    zeropadding_md.start_of_burst = false;
+    zeropadding_md.end_of_burst = false;
+    zeropadding_md.has_time_spec = true;
+    uhd::time_spec_t tspec(3.0);
+    zeropadding_md.time_spec = tspec;
+    
+    std::vector<std::complex<float>> zeropadding(spb);
+    for (int i = 0; i < spb; i++) {
+        zeropadding.push_back(std::complex<float>(0.0, 0.0));
+    }
 
     uhd::stream_args_t stream_args("fc32", "sc16");
 
@@ -54,32 +70,54 @@ void send_from_file(
 
     stream_args.channels = channel_nums;
     uhd::tx_streamer::sptr tx_stream = usrp_device->get_tx_stream(stream_args);
+    
+    int num = 20;
+    for (int i = 0; i < num; i++) {
+        //zeropadding_md.end_of_burst = (i == num - 1);
+        tx_stream->send(&zeropadding.front(), spb, zeropadding_md, 0.1);
+        zeropadding_md.has_time_spec = false;
+    }
+
 
     uhd::tx_metadata_t md;
-    md.start_of_burst = true;
+    md.time_spec = uhd::time_spec_t(10.0);
+    md.has_time_spec = false;
     md.end_of_burst = false;
-    md.has_time_spec = true;
-    uhd::time_spec_t tspec(1.0);
-    md.time_spec = tspec;
-    std::vector<std::complex<float>> buff(spb);
+    
+    md.start_of_burst = false;
+  
+
     std::ifstream infile(file.c_str(), std::ifstream::binary);
+    int num_iter = 3;
+    for (int file_iter = 0; file_iter < num_iter; file_iter++) {
 
-    //loop until the entire file has been read
+        std::vector<std::complex<float>> buff(spb);
 
-    while(not md.end_of_burst){
+        //loop until the entire file has been read
+        bool eof = false;
+        while(not eof){
 
-        infile.read((char*)&buff.front(), buff.size()*sizeof(std::complex<float>));
-        size_t num_tx_samps = size_t(infile.gcount()/sizeof(std::complex<float>));
-        //std::cout << "num_tx_samps" << num_tx_samps << " eof " << infile.eof() << std::endl;
-        md.end_of_burst = infile.eof();
+            infile.read((char*)&buff.front(), buff.size()*sizeof(std::complex<float>));
+            size_t num_tx_samps = size_t(infile.gcount()/sizeof(std::complex<float>));
+            //std::cout << "num_tx_samps" << num_tx_samps << " eof " << infile.eof() << std::endl;
+            md.end_of_burst = infile.eof() and file_iter == num_iter - 1;
+            eof = infile.eof();
 
-        tx_stream->send(&buff.front(), num_tx_samps, md, 0.1);
-        md.has_time_spec = false;
-        md.start_of_burst = false;
+
+            tx_stream->send(&buff.front(), num_tx_samps, md, 30);
+
+            //std::cout << "Done with sample, device time real: " << (usrp_device->get_time_now()).get_real_secs() << " device time frac: " << (usrp_device->get_time_now()).get_frac_secs() << std::endl << std::flush;
+            std::cout << "Sample sent at, device time real: " << (md.time_spec).get_real_secs() << " device time frac: " << (md.time_spec).get_frac_secs() << std::endl << std::flush;
+            std::cout << "Currently in position: " << infile.tellg() << ", file iter: " << file_iter << std::endl << std::flush;
+            md.has_time_spec = false;
+            md.start_of_burst = false;
+        }
+        infile.clear();
+        infile.seekg(0, std::ios::beg);
+        //std::cout << "Closing in file!" << std::flush;
     }
-    infile.close();
-    std::cout << "Closing in file!" << std::flush;
 
+    infile.close();
     stop_signal_called = true;
 }
 
@@ -104,20 +142,25 @@ void recv_to_file(
     outfile.open(file.c_str(), std::ofstream::binary);
 
     bool overflow_message = true;
+    bool first_message = true;
     float timeout = 20.1f + 0.1f; //expected settling time + padding for first recv
 
     //setup streaming
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
     stream_cmd.num_samps = 0;
     stream_cmd.stream_now = false;
-    stream_cmd.time_spec = uhd::time_spec_t(0.1);
+    stream_cmd.time_spec = uhd::time_spec_t(3.0);
 
     rx_stream->issue_stream_cmd(stream_cmd);
     while(not stop_signal_called){
         //std::cout << "in loop";
         // blocking
         size_t num_rx_samps = rx_stream->recv(&buff.front(), buff.size(), md, timeout);
-        //std::cout << "Got metadata: " << md.to_pp_string();
+        if (first_message) {
+            std::cout << "Got metadata: " << md.to_pp_string();
+            std::cout << "Sample time: " << md.time_spec.get_tick_count(usrp_device->get_rx_rate()) << std::endl << std::flush;
+            first_message = false;
+        }
         timeout = 0.1f; //small timeout for subsequent recv
 
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
@@ -204,6 +247,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     //Lock mboard clocks
     usrp_device->set_clock_source("internal");
 
+    usrp_device->set_tx_antenna("TX/RX");
+    usrp_device->set_rx_antenna("RX2");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     std::cout << boost::format("Setting TX Rate: %f Msps...") % (samp_rate/1e6) << std::endl;
     usrp_device->set_tx_rate(samp_rate);
     std::cout << boost::format("Actual TX Rate: %f Msps...") % (usrp_device->get_tx_rate()/1e6) << std::endl << std::endl;
@@ -242,6 +290,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
         std::cout << boost::format("Actual RX Gain: %f dB...") % usrp_device->get_rx_gain() << std::endl << std::endl;
     }
 
+
     //Check Ref and LO Lock detect
     std::vector<std::string> sensor_names;
     sensor_names = usrp_device->get_tx_sensor_names(0);
@@ -250,6 +299,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
         std::cout << boost::format("Checking lock: %s ...") % lo_locked.to_pp_string() << std::endl;
         UHD_ASSERT_THROW(lo_locked.to_bool());
     }
+
+    std::cout << "Clock rate is " << usrp_device->get_master_clock_rate() << std::endl;
+
+
+    std::cout << "Sleeping for 5 seconds" << std::endl << std::flush; 
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     //reset usrp time to prepare for transmit/receive
     std::cout << boost::format("Setting device timestamp to 0...") << std::endl;
