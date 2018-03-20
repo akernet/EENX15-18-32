@@ -15,7 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "wavetable.hpp"
 #include <uhd/types/tune_request.hpp>
 #include <uhd/utils/thread_priority.hpp>
 #include <uhd/utils/safe_main.hpp>
