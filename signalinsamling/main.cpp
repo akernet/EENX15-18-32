@@ -48,15 +48,19 @@ void send_from_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
     const std::string &file
 ){
-
+    // Samples per buffer.
     int spb = 5000;
-    uhd::tx_metadata_t zeropadding_md;
-    zeropadding_md.start_of_burst = false;
-    zeropadding_md.end_of_burst = false;
-    zeropadding_md.has_time_spec = true;
+    uhd::tx_metadata_t md;
+
+    md.start_of_burst = true;
+    md.end_of_burst = false;
+
+    // Start stream at 3 s.
+    md.has_time_spec = true;
     uhd::time_spec_t tspec(3.0);
-    zeropadding_md.time_spec = tspec;
-    
+    md.time_spec = tspec;
+     
+    // Zeropadding buffer. 
     std::vector<std::complex<float>> zeropadding(spb);
     for (int i = 0; i < spb; i++) {
         zeropadding.push_back(std::complex<float>(0.0, 0.0));
@@ -71,49 +75,32 @@ void send_from_file(
     uhd::tx_streamer::sptr tx_stream = usrp_device->get_tx_stream(stream_args);
     
     int num = 20;
+    std::cout << "Sending initial zero padding at time 3 s." << std::endl;
     for (int i = 0; i < num; i++) {
-        //zeropadding_md.end_of_burst = (i == num - 1);
-        tx_stream->send(&zeropadding.front(), spb, zeropadding_md, 0.1);
-        zeropadding_md.has_time_spec = false;
+        tx_stream->send(&zeropadding.front(), spb, md, 0.1);
+        md.has_time_spec = false;
     }
-
-
-    uhd::tx_metadata_t md;
-    md.time_spec = uhd::time_spec_t(10.0);
-    md.has_time_spec = false;
-    md.end_of_burst = false;
     
-    md.start_of_burst = false;
-  
-
+    // TODO: Implement memory caching of input file.
     std::ifstream infile(file.c_str(), std::ifstream::binary);
     int num_iter = 3;
     for (int file_iter = 0; file_iter < num_iter; file_iter++) {
 
         std::vector<std::complex<float>> buff(spb);
-
-        //loop until the entire file has been read
         bool eof = false;
+
         while(not eof){
 
             infile.read((char*)&buff.front(), buff.size()*sizeof(std::complex<float>));
             size_t num_tx_samps = size_t(infile.gcount()/sizeof(std::complex<float>));
-            //std::cout << "num_tx_samps" << num_tx_samps << " eof " << infile.eof() << std::endl;
             md.end_of_burst = infile.eof() and file_iter == num_iter - 1;
             eof = infile.eof();
-
-
             tx_stream->send(&buff.front(), num_tx_samps, md, 30);
 
-            //std::cout << "Done with sample, device time real: " << (usrp_device->get_time_now()).get_real_secs() << " device time frac: " << (usrp_device->get_time_now()).get_frac_secs() << std::endl << std::flush;
-            std::cout << "Sample sent at, device time real: " << (md.time_spec).get_real_secs() << " device time frac: " << (md.time_spec).get_frac_secs() << std::endl << std::flush;
-            std::cout << "Currently in position: " << infile.tellg() << ", file iter: " << file_iter << std::endl << std::flush;
-            md.has_time_spec = false;
-            md.start_of_burst = false;
         }
+
         infile.clear();
         infile.seekg(0, std::ios::beg);
-        //std::cout << "Closing in file!" << std::flush;
     }
 
     infile.close();
@@ -142,7 +129,7 @@ void recv_to_file(
 
     bool overflow_message = true;
     bool first_message = true;
-    float timeout = 20.1f + 0.1f; //expected settling time + padding for first recv
+    float timeout = 3.2f; //expected settling time + padding for first recv
 
     //setup streaming
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
@@ -151,21 +138,17 @@ void recv_to_file(
     stream_cmd.time_spec = uhd::time_spec_t(3.0);
 
     rx_stream->issue_stream_cmd(stream_cmd);
+    std::cout << "Starting receiver at 3 s." << std::endl;
     while(not stop_signal_called){
-        //std::cout << "in loop";
         // blocking
         size_t num_rx_samps = rx_stream->recv(&buff.front(), buff.size(), md, timeout);
-        if (first_message) {
-            std::cout << "Got metadata: " << md.to_pp_string();
-            std::cout << "Sample time: " << md.time_spec.get_tick_count(usrp_device->get_rx_rate()) << std::endl << std::flush;
-            first_message = false;
-        }
         timeout = 0.1f; //small timeout for subsequent recv
 
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
             std::cout << boost::format("Timeout while streaming") << std::endl;
             break;
         }
+
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW){
             if (overflow_message){
                 overflow_message = false;
