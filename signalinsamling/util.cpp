@@ -40,6 +40,7 @@
 
 void send_from_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
+    double start_time,
     const std::string &file
 ){
     // Samples per buffer.
@@ -49,9 +50,10 @@ void send_from_file(
     md.start_of_burst = true;
     md.end_of_burst = false;
 
-    // Start stream at 3 s.
+    // Start stream at given time, compensate with zero padding duration.
+    // spb (samples) / tx_rate (samples/second) = time compensation (seconds).
     md.has_time_spec = true;
-    uhd::time_spec_t tspec(3.0);
+    uhd::time_spec_t tspec(start_time - ((double) spb)/((double) usrp_device->get_tx_rate()));
     md.time_spec = tspec;
      
     // Zeropadding buffer. 
@@ -103,6 +105,7 @@ void send_from_file(
 
 void recv_to_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
+    double start_time,
     const std::string &file
 ){
     unsigned long long num_total_samps = 0;
@@ -123,16 +126,16 @@ void recv_to_file(
 
     bool overflow_message = true;
     bool first_message = true;
-    float timeout = 3.2f; //expected settling time + padding for first recv
+    float timeout = start_time + 0.3f; //expected settling time + padding for first recv
 
     //setup streaming
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
     stream_cmd.num_samps = 0;
     stream_cmd.stream_now = false;
-    stream_cmd.time_spec = uhd::time_spec_t(3.0);
+    stream_cmd.time_spec = uhd::time_spec_t(start_time);
 
     rx_stream->issue_stream_cmd(stream_cmd);
-    std::cout << "Starting receiver at 3 s." << std::endl;
+    std::cout << "Starting receiver at " << start_time << " s." << std::endl;
     while(not stop_signal_called){
         // blocking
         size_t num_rx_samps = rx_stream->recv(&buff.front(), buff.size(), md, timeout);

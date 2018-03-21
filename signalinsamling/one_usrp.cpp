@@ -146,7 +146,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     usrp_device->set_time_now(uhd::time_spec_t(0.0));
 
     // Switch rx antenna after initial cross talk reading.
-    usrp_device->set_command_time(uhd::time_spec_t(3.5));
+    usrp_device->set_command_time(uhd::time_spec_t(3.2));
     usrp_device->set_rx_antenna("RX2");
     usrp_device->clear_command_time();
 
@@ -156,10 +156,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     boost::thread_group transmit_thread;
     std::string in_file_path = "infile.bin";
     std::string out_file_path = "outfile.bin";
-    transmit_thread.create_thread(boost::bind(&send_from_file, usrp_device, in_file_path));
+    transmit_thread.create_thread(boost::bind(&send_from_file, usrp_device, 3.0f, in_file_path));
 
     //recv to file
-    recv_to_file(usrp_device, out_file_path);
+    recv_to_file(usrp_device, 2.9f, out_file_path);
 
     //clean up transmit worker
     stop_signal_called = true;
