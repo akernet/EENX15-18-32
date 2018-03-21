@@ -14,27 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
-
-#include <uhd/types/tune_request.hpp>
 #include <uhd/utils/thread_priority.hpp>
 #include <uhd/utils/safe_main.hpp>
-#include <uhd/utils/static.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
-#include <uhd/exception.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/program_options.hpp>
-#include <boost/math/special_functions/round.hpp>
-#include <boost/format.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
-#include <algorithm>    // std::fill
-#include <vector>       // std::vector
-#include <boost/filesystem.hpp>
 #include <iostream>
-#include <fstream>
 #include <thread>
-#include <chrono>
-#include <csignal>
 
 #include "util.hpp"
 
