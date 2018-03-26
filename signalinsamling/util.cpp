@@ -38,6 +38,12 @@
 
 #include "util.hpp"
 
+void switch_antenna(uhd::usrp::multi_usrp::sptr usrp_device, float time) {
+    usrp_device->set_command_time(uhd::time_spec_t(time));
+    usrp_device->set_rx_antenna("RX2");
+    usrp_device->clear_command_time();
+}
+
 void send_from_file(
     uhd::usrp::multi_usrp::sptr usrp_device,
     double start_time,
@@ -57,7 +63,7 @@ void send_from_file(
     md.time_spec = tspec;
      
     // Zeropadding buffer. 
-    std::vector<std::complex<float>> zeropadding(spb);
+    std::vector<std::complex<float> > zeropadding(spb);
     for (int i = 0; i < spb; i++) {
         zeropadding.push_back(std::complex<float>(0.0, 0.0));
     }
@@ -82,7 +88,7 @@ void send_from_file(
     int num_iter = 3;
     for (int file_iter = 0; file_iter < num_iter; file_iter++) {
 
-        std::vector<std::complex<float>> buff(spb);
+        std::vector<std::complex<float> > buff(spb);
         bool eof = false;
 
         while(not eof){
@@ -120,7 +126,7 @@ void recv_to_file(
 
     // Prepare buffers for received samples and metadata
     uhd::rx_metadata_t md;
-    std::vector<std::complex<float>> buff(spb);
+    std::vector<std::complex<float> > buff(spb);
     std::ofstream outfile;
     outfile.open(file.c_str(), std::ofstream::binary);
 
@@ -136,6 +142,11 @@ void recv_to_file(
 
     rx_stream->issue_stream_cmd(stream_cmd);
     std::cout << "Starting receiver at " << start_time << " s." << std::endl;
+
+    boost::thread_group switch_thread;
+    switch_thread.create_thread(boost::bind(&switch_antenna, usrp_device, 3.0f));
+
+
     while(not stop_signal_called){
         // blocking
         size_t num_rx_samps = rx_stream->recv(&buff.front(), buff.size(), md, timeout);
