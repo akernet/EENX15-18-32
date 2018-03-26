@@ -131,11 +131,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     std::cout << boost::format("Setting device timestamp to 0...") << std::endl;
     usrp_device->set_time_now(uhd::time_spec_t(0.0));
 
-    // Switch rx antenna after initial cross talk reading.
-    usrp_device->set_command_time(uhd::time_spec_t(3.2));
-    usrp_device->set_rx_antenna("RX2");
-    usrp_device->clear_command_time();
-
     std::cout << "Press Ctrl + C to stop streaming..." << std::endl;
 
     //start transmit worker thread
