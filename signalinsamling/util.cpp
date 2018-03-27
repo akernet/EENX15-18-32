@@ -39,9 +39,10 @@
 #include "util.hpp"
 
 void switch_antenna(uhd::usrp::multi_usrp::sptr usrp_device, float time) {
-    usrp_device->set_command_time(uhd::time_spec_t(time));
-    usrp_device->set_rx_antenna("RX2");
-    usrp_device->clear_command_time();
+    std::this_thread::sleep_for(std::chrono::microseconds((long) time*1000000));
+    //usrp_device->set_command_time(uhd::time_spec_t(time));
+    usrp_device->set_rx_antenna("TX/RX");
+    //usrp_device->clear_command_time();
 }
 
 void send_from_file(
@@ -85,7 +86,7 @@ void send_from_file(
     
     // TODO: Implement memory caching of input file.
     std::ifstream infile(file.c_str(), std::ifstream::binary);
-    int num_iter = 3;
+    int num_iter = 10;
     for (int file_iter = 0; file_iter < num_iter; file_iter++) {
 
         std::vector<std::complex<float> > buff(spb);
@@ -142,10 +143,6 @@ void recv_to_file(
 
     rx_stream->issue_stream_cmd(stream_cmd);
     std::cout << "Starting receiver at " << start_time << " s." << std::endl;
-
-    boost::thread_group switch_thread;
-    switch_thread.create_thread(boost::bind(&switch_antenna, usrp_device, 3.0f));
-
 
     while(not stop_signal_called){
         // blocking

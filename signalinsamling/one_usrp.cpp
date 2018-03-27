@@ -69,7 +69,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
 
     usrp_device->set_tx_antenna("TX/RX");
     // Switch intial antenna config to tx/rx.
-    usrp_device->set_rx_antenna("TX/RX");
+    usrp_device->set_rx_antenna("RX2");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -147,6 +147,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     transmit_thread.join_all();
 
     //finished
-    std::cout << std::endl << "Done!" << std::endl << std::endl;
+    std::cout << std::endl << "Done!" << std::endl << std::endl << std::flush;
     return EXIT_SUCCESS;
 }

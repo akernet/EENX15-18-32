@@ -88,7 +88,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
 
     tx_usrp_device->set_tx_antenna("TX/RX");
     // Switch intial antenna config to tx/rx.
-    rx_usrp_device->set_rx_antenna("TX/RX");
+    rx_usrp_device->set_rx_antenna("RX2");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -151,11 +151,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     tx_usrp_device->set_time_now(uhd::time_spec_t(0.0));
     rx_usrp_device->set_time_now(uhd::time_spec_t(0.0));
 
-    // Switch rx antenna after initial cross talk reading.
-    rx_usrp_device->set_command_time(uhd::time_spec_t(3.2f));
-    rx_usrp_device->set_rx_antenna("RX2");
-    rx_usrp_device->clear_command_time();
-
     std::cout << "Press Ctrl + C to stop streaming..." << std::endl;
 
     //start transmit worker thread
@@ -164,8 +159,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     std::string out_file_path = "outfile.bin";
     transmit_thread.create_thread(boost::bind(&send_from_file, tx_usrp_device, 3.0f, in_file_path));
 
+    boost::thread_group switch_thread;
+    switch_thread.create_thread(boost::bind(&switch_antenna, rx_usrp_device, 4.0f));
+
     //recv to file
-    recv_to_file(rx_usrp_device, 2.9f, out_file_path);
+    recv_to_file(rx_usrp_device, 3.0f, out_file_path);
 
     //clean up transmit worker
     stop_signal_called = true;
