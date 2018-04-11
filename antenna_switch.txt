@@ -114,7 +114,7 @@ http://files.ettus.com/schematics/b200mini/b200mini.pdf
 
        [cFE_SEL_RX_RX2][cFE_SEL_TRX_TX][cFE_SEL_RX_TRX][cFE_SEL_TRX_RX][2][1][0]
 mask           1               1              1                1        0  0  0
-loopback       0               1              1                0        0  0  0
+crosstalk      0               1              1                0        0  0  0
 normal         1               1              0                0        0  0  0
               b      d
 mask    1111000    120
