@@ -1,0 +1,122 @@
+/usrp3/top/b2xxmini/b205.v
+    {cTXDRV_PWEN, cFE_SEL_RX_RX2, cFE_SEL_TRX_TX, cFE_SEL_RX_TRX, cFE_SEL_TRX_RX} = fe_gpio_reg[7:3];
+    cFE_SEL_TRX_RX <= fe_gpio_reg[3]
+    cFE_SEL_RX_TRX <= fe_gpio_reg[4]
+    cFE_SEL_TRX_TX <= fe_gpio_reg[5]
+    cFE_SEL_RX_RX2 <= fe_gpio_reg[6]
+    
+    ...
+
+    always @(posedge radio_clk)
+        fe_gpio_reg <= fe_gpio_out;
+
+    ...
+
+    b205_core #(.EXTRA_BUFF_SIZE(12)) b205_core
+    (
+        ...
+        .fe_gpio_out(fe_gpio_out),
+        ...
+    )
+
+/usrp3/top/b2xxmini/b205_core.v - module b205_core
+    assign fe_gpio_out = fe_gpio_out32[7:0];
+
+    radio_legacy #(...) radio 
+    (
+        ...
+        .fe_gpio_out(fe_gpio_out32),
+        ...
+    )
+
+/usrp3/lib/radio_200/radio_legacy.v
+    gpio_atr #(...) fe_gpio_atr
+    (
+        ...
+        .gpio_out(fe_gpio_out),
+        ...
+    )
+
+    localparam SR_ATR = 8'd12; // thorugh 8'd18
+
+/usrp3/lib/control/gpio_atr.v - module gpio_atr
+    // fabric_ctrl = 32'h0
+    generate for (i=0; i<WIDTH; i=i+1)
+        always @(posedge clk) begin
+            gpio_out[i] <= fabric_ctrl[i] ? gpio_out_fab[i] : ogpio[i];
+    end endgenerate
+
+    ...
+
+    generate for (i=0; i<WIDTH; i=i+1) begin: gpio_mux_gen
+        //ATR selection MUX
+        always @(posedge clk) begin
+        case({atr_disable[i], tx_d, rx_d})
+            3'b000:   ogpio[i] <= in_idle[i];
+            3'b001:   ogpio[i] <= in_rx[i];
+            3'b010:   ogpio[i] <= in_tx[i];
+            3'b011:   ogpio[i] <= in_fdx[i];
+            default:  ogpio[i] <= in_idle[i];//If ATR mode is disabled, always use IDLE value
+        endcase
+    end endgenerate
+
+    ...
+
+    setting_reg #(.my_addr(BASE+0), .width(WIDTH), .at_reset(DEFAULT_IDLE)) reg_idle (
+        .clk(clk),.rst(reset),.strobe(set_stb),.addr(set_addr), .in(set_data),
+        .out(in_idle),.changed());
+
+    setting_reg #(.my_addr(BASE+1), .width(WIDTH)) reg_rx (
+        .clk(clk),.rst(reset),.strobe(set_stb),.addr(set_addr), .in(set_data),
+        .out(in_rx),.changed());
+
+    setting_reg #(.my_addr(BASE+2), .width(WIDTH)) reg_tx (
+        .clk(clk),.rst(reset),.strobe(set_stb),.addr(set_addr), .in(set_data),
+        .out(in_tx),.changed());
+
+    setting_reg #(.my_addr(BASE+3), .width(WIDTH)) reg_fdx (
+        .clk(clk),.rst(reset),.strobe(set_stb),.addr(set_addr), .in(set_data),
+        .out(in_fdx),.changed());
+
+    setting_reg #(.my_addr(BASE+5), .width(WIDTH)) reg_atr_disable (
+        .clk(clk),.rst(reset),.strobe(set_stb),.addr(set_addr), .in(set_data),
+    .out(atr_disable),.changed());
+
+/usrp3/lib/control/setting_reg.v
+    always @(posedge clk)
+        if(strobe & (my_addr==addr))
+            out <= in[width-1:0];
+            changed <= 1'b1;
+
+
+// The UHD API
+// The multi_usrp::set_gpio_attr() method is the UHD API for configuring and
+// controlling the GPIO banks.  The parameters to the method are:
+// bank - the name of the GPIO bank (typically "FP0" for front panel GPIO,
+//                                   "TX<n>" for TX daughter card GPIO, or
+//                                   "RX<n>" for RX daughter card GPIO)
+// attr - attribute (register) to change ("DDR", "OUT", "CTRL", "ATR_0X",
+//                                        "ATR_RX", "ATR_TX", "ATR_XX")
+// value - the value to be set
+// mask - a mask indicating which bits in the specified attribute register are
+//          to be changed (default is all bits).
+
+
+usrp->set_gpio_attr("FP0, "ATR_XX", value, mask);
+
+fe_gpio_reg
+    cFE_SEL_TRX_RX <= fe_gpio_reg[3]
+    cFE_SEL_RX_TRX <= fe_gpio_reg[4]
+    cFE_SEL_TRX_TX <= fe_gpio_reg[5]
+    cFE_SEL_RX_RX2 <= fe_gpio_reg[6]
+
+http://files.ettus.com/schematics/b200mini/b200mini.pdf
+
+       [cFE_SEL_RX_RX2][cFE_SEL_TRX_TX][cFE_SEL_RX_TRX][cFE_SEL_TRX_RX][2][1][0]
+mask           1               1              1                1        0  0  0
+crosstalk      0               1              1                0        0  0  0
+normal         1               1              0                0        0  0  0
+              b      d
+mask    1111000    120
+lb      0110000     48
+normal  1100000     96
