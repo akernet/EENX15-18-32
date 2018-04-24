@@ -37,12 +37,42 @@
 #include <csignal>
 
 #include "util.hpp"
+#include <hidapi.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 void switch_antenna(uhd::usrp::multi_usrp::sptr usrp_device, float time) {
     std::this_thread::sleep_for(std::chrono::microseconds((long) time*1000000));
     //usrp_device->set_command_time(uhd::time_spec_t(time));
     usrp_device->set_rx_antenna("TX/RX");
     //usrp_device->clear_command_time();
+}
+
+int res;
+unsigned char buffer[64];
+hid_device *handle;
+#define MAX_STR 255
+wchar_t wstr[MAX_STR];
+
+void init_matrix() {
+    handle = hid_open(0x20ce, 0x0022, NULL);
+
+    // Read the Manufacturer String
+	res = hid_get_manufacturer_string(handle, wstr, MAX_STR);
+	wprintf(L"Manufacturer String: %s\n", wstr);
+
+	// Read the Product String
+	res = hid_get_product_string(handle, wstr, MAX_STR);
+	wprintf(L"Product String: %s\n", wstr);
+
+	// Read the Serial Number String
+	res = hid_get_serial_number_string(handle, wstr, MAX_STR);
+	wprintf(L"Serial Number String: (%d) %s\n", wstr[0], wstr);
+}
+
+void switch_matrix(int port1, int port2) {
+
 }
 
 void send_from_file(
@@ -78,7 +108,7 @@ void send_from_file(
     uhd::tx_streamer::sptr tx_stream = usrp_device->get_tx_stream(stream_args);
     
     int num = 20;
-    std::cout << "Sending initial zero padding at time 3 s." << std::endl;
+    std::cout << "Sending initial zero padding at time " << (start_time - ((double) spb)/((double) usrp_device->get_tx_rate())) << "s." << std::endl;
     for (int i = 0; i < num; i++) {
         tx_stream->send(&zeropadding.front(), spb, md, 0.1);
         md.has_time_spec = false;

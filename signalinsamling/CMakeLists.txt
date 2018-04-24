@@ -46,11 +46,37 @@ find_package(UHD "3.8.0" REQUIRED)
 # To specify an exact version:
 #find_package(UHD 3.8.1 EXACT REQUIRED)
 
+find_library(HIDAPI_LIBRARY
+	NAMES hidapi hidapi-libusb)
+
+find_path(HIDAPI_INCLUDE_DIR
+	NAMES hidapi.h
+	PATH_SUFFIXES
+	hidapi)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(HIDAPI
+	DEFAULT_MSG
+	HIDAPI_LIBRARY
+	HIDAPI_INCLUDE_DIR)
+
+if(HIDAPI_FOUND)
+	set(HIDAPI_LIBRARIES "${HIDAPI_LIBRARY}")
+
+	set(HIDAPI_INCLUDE_DIRS "${HIDAPI_INCLUDE_DIR}")
+    link_directories(${HIDAPI_INCLUDE_DIR})
+endif()
+
+mark_as_advanced(HIDAPI_INCLUDE_DIR HIDAPI_LIBRARY)
+
 ### Configure Compiler ########################################################
 include_directories(
     ${Boost_INCLUDE_DIRS}
     ${UHD_INCLUDE_DIRS}
+    ${HIDAPI_INCLUDE_DIRS}
 )
+list(APPEND SERVER_EXTRA_LIBS ${HIDAPI_LIBRARIES})
+
 link_directories(${Boost_LIBRARY_DIRS})
 
 ### Make the executable #######################################################
@@ -69,7 +95,7 @@ MESSAGE(STATUS "****************************************************************
 # anything else we need (in this case, some Boost libraries):
 if(NOT UHD_USE_STATIC_LIBS)
     message(STATUS "Linking against shared UHD library.")
-    target_link_libraries(one_usrp ${UHD_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(one_usrp ${UHD_LIBRARIES} ${Boost_LIBRARIES} ${HIDAPI_LIBRARIES})
 # Shared library case: All we need to do is link against the library, and
 # anything else we need (in this case, some Boost libraries):
 else(NOT UHD_USE_STATIC_LIBS)
@@ -88,7 +114,7 @@ endif(NOT UHD_USE_STATIC_LIBS)
 # anything else we need (in this case, some Boost libraries):
 if(NOT UHD_USE_STATIC_LIBS)
     message(STATUS "Linking against shared UHD library.")
-    target_link_libraries(two_usrp ${UHD_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(two_usrp ${UHD_LIBRARIES} ${Boost_LIBRARIES} ${HIDAPI_LIBRARIES})
 # Shared library case: All we need to do is link against the library, and
 # anything else we need (in this case, some Boost libraries):
 else(NOT UHD_USE_STATIC_LIBS)
