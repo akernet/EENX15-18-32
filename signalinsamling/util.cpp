@@ -84,8 +84,8 @@ void switch_matrix(int port1, int port2, float delay) {
     res = hid_write(handle, buffer, string_length+1);
 	
     buffer[0] = 1;
-    std::string command_string = boost::str(boost::format(":PATH:A2:N%i") % port2);
-    size_t string_length = command_string.length();
+    command_string = boost::str(boost::format(":PATH:A2:N%i") % port2);
+    string_length = command_string.length();
     for (int i = 0; i < string_length; i++) {
         buffer[i+1] = command_string[i];
     }
