@@ -34,8 +34,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     // init_switch();
     //
     init_matrix();
-    std::cout << "Changing switch to A1:N1" << std::endl;
-    switch_matrix(1, 1);
+    std::cout << "Changing switch to A1:N1, A2:N2" << std::endl;
+    switch_matrix(1, 2, 0.0f);
     std::cout << std::endl << "Done!" << std::endl << std::endl << std::flush;
     return EXIT_SUCCESS;
 }
