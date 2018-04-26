@@ -75,7 +75,16 @@ void switch_matrix(int port1, int port2, float delay) {
     std::this_thread::sleep_for(std::chrono::microseconds((long) delay*1000000));
     // SCPI interrupt code
     buffer[0] = 1;
-    std::string command_string = boost::str(boost::format(":PATH:A%i:N%i") % port1 % port2);
+    std::string command_string = boost::str(boost::format(":PATH:A1:N%i") % port1);
+    size_t string_length = command_string.length();
+    for (int i = 0; i < string_length; i++) {
+        buffer[i+1] = command_string[i];
+    }
+    std::cout << "Writing buffer: " << buffer << std::endl;
+    res = hid_write(handle, buffer, string_length+1);
+	
+    buffer[0] = 1;
+    std::string command_string = boost::str(boost::format(":PATH:A2:N%i") % port2);
     size_t string_length = command_string.length();
     for (int i = 0; i < string_length; i++) {
         buffer[i+1] = command_string[i];
