@@ -2,7 +2,7 @@ static bool stop_signal_called = false;
 
 void init_matrix();
 
-void switch_matrix(int port1, int port2);
+void switch_matrix(int port1, int port2, float delay);
 
 void switch_antenna(uhd::usrp::multi_usrp::sptr usrp_device, float time);
 
