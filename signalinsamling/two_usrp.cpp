@@ -135,7 +135,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     // TODO: Add rx lock detection
     sensor_names = tx_usrp_device->get_tx_sensor_names(0);
     if (std::find(sensor_names.begin(), sensor_names.end(), "lo_locked") != sensor_names.end()) {
-        uhd::sensor_value_t lo_locked = tx_usrp_device->get_tx_sensor("lo_locked",0);
+        uhd::sensor_value_t lo_locked = tx_usrp_device->get_tx_sensor("lo_locked", 0);
         std::cout << boost::format("Checking lock: %s ...") % lo_locked.to_pp_string() << std::endl;
         UHD_ASSERT_THROW(lo_locked.to_bool());
     }
@@ -157,10 +157,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     boost::thread_group transmit_thread;
     std::string in_file_path = "infile.bin";
     std::string out_file_path = "outfile.bin";
-    transmit_thread.create_thread(boost::bind(&send_from_file, tx_usrp_device, 3.0f, in_file_path));
+    transmit_thread.create_thread(boost::bind(&send_from_file, tx_usrp_device, 4.0f, in_file_path));
 
     boost::thread_group switch_thread;
-    switch_thread.create_thread(boost::bind(&switch_antenna, rx_usrp_device, 4.0f));
+    switch_thread.create_thread(boost::bind(&switch_antenna, rx_usrp_device, 5.0f));
 
     //recv to file
     recv_to_file(rx_usrp_device, 3.0f, out_file_path);

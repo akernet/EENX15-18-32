@@ -72,7 +72,15 @@ void init_matrix() {
 }
 
 void switch_matrix(int port1, int port2) {
-
+    // SCPI interrupt code
+    buffer[0] = 1;
+    std::string command_string = boost::str(boost::format(":PATH:A%i:N%i") % port1 % port2);
+    size_t string_length = command_string.length();
+    for (int i = 0; i < string_length; i++) {
+        buffer[i+1] = command_string[i];
+    }
+    std::cout << "Writing buffer: " << buffer << std::endl;
+    res = hid_write(handle, buffer, string_length+1);
 }
 
 void send_from_file(
