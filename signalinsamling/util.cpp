@@ -71,7 +71,8 @@ void init_matrix() {
 	wprintf(L"Serial Number String: (%d) %s\n", wstr[0], wstr);
 }
 
-void switch_matrix(int port1, int port2) {
+void switch_matrix(int port1, int port2, float delay) {
+    std::this_thread::sleep_for(std::chrono::microseconds((long) delay*1000000));
     // SCPI interrupt code
     buffer[0] = 1;
     std::string command_string = boost::str(boost::format(":PATH:A%i:N%i") % port1 % port2);
