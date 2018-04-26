@@ -124,7 +124,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
         freq = start_freq + iter * (end_freq - start_freq) / max_iter;
         
         std::cout << "Resetting switch" << std::endl;
-        switch_antenna(loopback_1, loopback_2, 0.0f);
+        switch_matrix(loopback_1, loopback_2, 0.0f);
 
         std::cout << boost::format("Setting TX Freq: %f MHz...") % (freq/1e6) << std::endl;
         uhd::tune_request_t tx_tune_request(freq);
