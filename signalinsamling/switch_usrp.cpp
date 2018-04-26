@@ -109,11 +109,22 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     double freq;
     int max_iter = 10;
     boost::thread_group transmit_thread;
+    boost::thread_group switch_thread;
     std::string in_file_path;
     std::string out_file_path;
     //sweep through the frequencies
+    
+    int loopback_1 = 1;
+    int loopback_2 = 2;
+    
+    int test_1 = 4;
+    int test_2 = 5;
+    
     for(int iter = 0; iter < max_iter; iter++){
         freq = start_freq + iter * (end_freq - start_freq) / max_iter;
+        
+        std::cout << "Resetting switch" << std::endl;
+        switch_antenna(loopback_1, loopback_2, 0.0f);
 
         std::cout << boost::format("Setting TX Freq: %f MHz...") % (freq/1e6) << std::endl;
         uhd::tune_request_t tx_tune_request(freq);
@@ -150,6 +161,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
         in_file_path = "infile.bin";
         out_file_path = boost::str(boost::format("outfile%i.bin")%iter);
         transmit_thread.create_thread(boost::bind(&send_from_file, usrp_device, 3.0f, in_file_path));
+        
+        switch_thread.create_thread(boost::bind(&switch_matrix, test_1, test_2, 4.0f));
 
         //recv to file
         recv_to_file(usrp_device, 2.9f, out_file_path);
