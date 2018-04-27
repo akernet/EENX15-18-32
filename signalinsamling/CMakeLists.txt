@@ -85,6 +85,7 @@ add_executable(two_usrp two_usrp.cpp util.cpp)
 add_executable(switch_usrp switch_usrp.cpp util.cpp)
 add_executable(switch_test switch_test.cpp util.cpp)
 add_executable(switch_scpi switch_scpi.cpp util.cpp)
+add_executable(hid_test hid_test.cpp util.cpp)
 
 SET(CMAKE_BUILD_TYPE "Release")
 MESSAGE(STATUS "******************************************************************************")
@@ -189,6 +190,24 @@ else(NOT UHD_USE_STATIC_LIBS)
     )
 endif(NOT UHD_USE_STATIC_LIBS)
 
+# Shared library case: All we need to do is link against the library, and
+# anything else we need (in this case, some Boost libraries):
+if(NOT UHD_USE_STATIC_LIBS)
+    message(STATUS "Linking against shared UHD library.")
+    target_link_libraries(hid_test ${UHD_LIBRARIES} ${Boost_LIBRARIES} ${HIDAPI_LIBRARIES})
+# Shared library case: All we need to do is link against the library, and
+# anything else we need (in this case, some Boost libraries):
+else(NOT UHD_USE_STATIC_LIBS)
+    message(STATUS "Linking against static UHD library.")
+    target_link_libraries(hid_test
+        # We could use ${UHD_LIBRARIES}, but linking requires some extra flags,
+        # so we use this convenience variable provided to us
+        ${UHD_STATIC_LIB_LINK_FLAG}
+        # Also, when linking statically, we need to pull in all the deps for
+        # UHD as well, because the dependencies don't get resolved automatically
+        ${UHD_STATIC_LIB_DEPS}
+    )
+endif(NOT UHD_USE_STATIC_LIBS)
 ### Once it's built... ########################################################
 # Here, you would have commands to install your program.
 # We will skip these in this example.
