@@ -84,3 +84,10 @@ set(gca,'YTickLabel',[],'FontSize',15)
 ylabel('Spänning (godtycklig skala)')
 axis([0 (t(end)-t(1))*1e3/sampRate -1 1])
 matlab2tikz('../../signalbehandling/figures/reference-signal.tex')
+
+%%
+t = (1:length(reOut1));
+plot(t, reOut1(t)/(1 * max(reOut1)),'black','LineWidth',1);
+hold on
+plot(t, reIn(t),'r','LineWidth',1);
+

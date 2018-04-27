@@ -33,7 +33,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     uhd::set_thread_priority_safe();
 
     //transmit variables to be set by po
-    double start_freq, end_freq, tx_gain, tx_bw;
+    double start_freq, end_freq, tx_gain, tx_bw, step;
 
     //receive variables to be set by po
     std::string rx_args, file, type, rx_ant, rx_subdev, rx_channels;
@@ -45,8 +45,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
     desc.add_options()
         ("help", "help message")
         ("samp-rate", po::value<double>(&samp_rate), "rate of transmit outgoing samples")
-        ("start-freq", po::value<double>(&start_freq), "starting center frequency")
-        ("end-freq", po::value<double>(&start_freq), "ending center frequency")
+        ("start-freq", po::value<double>(&start_freq), "starting center frequency in Hz")
+        ("end-freq", po::value<double>(&start_freq), "ending center frequency in Hz")
+        ("step", po::value<double>(&step), "frequency step for sweep in Hz")
         ("tx-gain", po::value<double>(&tx_gain), "gain for the transmit RF chain")
         ("rx-gain", po::value<double>(&rx_gain), "gain for the receive RF chain")
         ("tx-bw", po::value<double>(&tx_bw), "analog transmit filter bandwidth in Hz")
@@ -106,22 +107,19 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
         std::cout << boost::format("Actual TX Gain: %f dB...") % usrp_device->get_tx_gain() << std::endl << std::endl;
     }
 
-    double freq;
-    int max_iter = 10;
     boost::thread_group transmit_thread;
     boost::thread_group switch_thread;
     std::string in_file_path;
     std::string out_file_path;
-    //sweep through the frequencies
     
     int loopback_1 = 1;
     int loopback_2 = 2;
     
     int test_1 = 4;
     int test_2 = 5;
-    
-    for(int iter = 0; iter < max_iter; iter++){
-        freq = start_freq + iter * (end_freq - start_freq) / max_iter;
+
+    //sweep through the frequencies
+    for(double freq = start_freq; freq <= end_freq; freq += step){
         
         std::cout << "Resetting switch" << std::endl;
         switch_matrix(loopback_1, loopback_2, 0.0f);
@@ -147,7 +145,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
 
         std::cout << "Clock rate is " << usrp_device->get_master_clock_rate() << std::endl;
 
-
         std::cout << "Sleeping for 1 seconds" << std::endl << std::flush; 
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -159,7 +156,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
 
         //start transmit worker thread
         in_file_path = "infile.bin";
-        out_file_path = boost::str(boost::format("outfile%i.bin")%iter);
+        out_file_path = boost::str(boost::format("sweep-measurements/outfile%.1f.bin")%freq);
         transmit_thread.create_thread(boost::bind(&send_from_file, usrp_device, 3.0f, in_file_path));
         
         switch_thread.create_thread(boost::bind(&switch_matrix, test_1, test_2, 4.0f));

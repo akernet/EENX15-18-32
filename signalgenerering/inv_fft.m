@@ -1,11 +1,12 @@
-clf
-samp_rate = 64e3;
+clf;
+clc;
+samp_rate = 6e5;
 vector_length = 2^17;
 
 frequencies = linspace(-samp_rate/2, samp_rate/2, vector_length);
 frequency_bins = zeros(vector_length, 1);
 
-signal_frequencies = (0:5000:samp_rate/2);
+signal_frequencies = (-samp_rate/2:50000:samp_rate/2);
 
 [closeness, indices] = min ( abs(repmat(frequencies, length(signal_frequencies)) - transpose(signal_frequencies)), [], 2 );
 
@@ -28,6 +29,6 @@ plot3(t, real(y), imag(y));
 out = zeros(length(y)*2, 1);
 out(1:2:length(out)) = real(y);
 out(2:2:length(out)) = imag(y);
-output_file = fopen('output/comb.bin', 'w')
-fwrite(output_file, out, 'double')
+output_file = fopen('infile.bin', 'w')
+fwrite(output_file, out, 'float')
 
